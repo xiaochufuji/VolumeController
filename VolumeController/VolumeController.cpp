@@ -66,7 +66,7 @@ std::vector<std::string> xiaochufuji::VolumeController::getAllAudioDevices()
 
 int xiaochufuji::VolumeController::getDeviceVolume(const std::string& deviceName)
 {
-	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<IAudioEndpointVolume> pEndpointVolume;
 		HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pEndpointVolume);
 		if (FAILED(hr)) return false;
@@ -88,7 +88,7 @@ int xiaochufuji::VolumeController::getDeviceVolume(const std::string& deviceName
 
 BOOL xiaochufuji::VolumeController::getDeviceMute(const std::string& deviceName)
 {
-	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<IAudioEndpointVolume> pEndpointVolume;
 		HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pEndpointVolume);
 		if (FAILED(hr)) return false;
@@ -108,9 +108,9 @@ BOOL xiaochufuji::VolumeController::getDeviceMute(const std::string& deviceName)
 	return  -1;
 }
 
-bool xiaochufuji::VolumeController::setDeviceVolume(const std::string& deviceName, UINT32 volumeLevel)
+bool xiaochufuji::VolumeController::setDeviceVolume(const std::string& deviceName, UINT32 volumeLevel, bool cancelMute)
 {
-	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<IAudioEndpointVolume> pEndpointVolume;
 		HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pEndpointVolume);
 		if (FAILED(hr)) return false;
@@ -119,8 +119,12 @@ bool xiaochufuji::VolumeController::setDeviceVolume(const std::string& deviceNam
 		float setValue = static_cast<float>(info.set) / 100;
 		if (setValue < 0.0f + epsilon) setValue = 0.0f;
 		if (setValue > 1.0f - epsilon) setValue = 1.0f;
-		hr = pEndpointVolume->SetMasterVolumeLevelScalar(setValue, NULL);
-		if (SUCCEEDED(hr)) return true;
+		if (cancelMute) hr = pEndpointVolume->SetMute(FALSE, NULL);
+		if (SUCCEEDED(hr))
+		{
+			hr = pEndpointVolume->SetMasterVolumeLevelScalar(setValue, NULL);
+			if (SUCCEEDED(hr)) return true;
+		}
 		return false;
 		};
 	VolumeStucture vs{};
@@ -128,9 +132,9 @@ bool xiaochufuji::VolumeController::setDeviceVolume(const std::string& deviceNam
 	return findDevice(deviceName, callback, vs);
 }
 
-bool xiaochufuji::VolumeController::adjustDeviceVolume(const std::string& deviceName, UINT32 volumeLevel)
+bool xiaochufuji::VolumeController::adjustDeviceVolume(const std::string& deviceName, UINT32 volumeLevel, bool cancelMute)
 {
-	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute) ->bool {
 
 		CComPtr<IAudioEndpointVolume> pEndpointVolume;
 		HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pEndpointVolume);
@@ -146,9 +150,12 @@ bool xiaochufuji::VolumeController::adjustDeviceVolume(const std::string& device
 			float newValue = kahanAdd(static_cast<float>(info.adjust) / 100, currentValue);
 			if (newValue < 0.0f + epsilon) newValue = 0.0f;
 			if (newValue > 1.0f - epsilon) newValue = 1.0f;
-
-			hr = pEndpointVolume->SetMasterVolumeLevelScalar(newValue, NULL);
-			if (SUCCEEDED(hr)) return true;
+			if (cancelMute) hr = pEndpointVolume->SetMute(FALSE, NULL);
+			if (SUCCEEDED(hr))
+			{
+				hr = pEndpointVolume->SetMasterVolumeLevelScalar(newValue, NULL);
+				if (SUCCEEDED(hr)) return true;
+			}
 			return false;
 		} while (0);
 		return false;
@@ -160,7 +167,7 @@ bool xiaochufuji::VolumeController::adjustDeviceVolume(const std::string& device
 
 bool xiaochufuji::VolumeController::muteDeviceVolume(const std::string& deviceName, bool isMute)
 {
-	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<IAudioEndpointVolume> pEndpointVolume;
 		HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pEndpointVolume);
 		if (FAILED(hr)) return false;
@@ -176,7 +183,7 @@ bool xiaochufuji::VolumeController::muteDeviceVolume(const std::string& deviceNa
 
 bool xiaochufuji::VolumeController::triggerMuteDeviceVolume(const std::string& deviceName)
 {
-	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<IAudioEndpointVolume> pEndpointVolume;
 		HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pEndpointVolume);
 		if (FAILED(hr)) return false;
@@ -251,7 +258,7 @@ std::vector<DWORD> xiaochufuji::VolumeController::getAllAudioSessions()
 
 int xiaochufuji::VolumeController::getSessionVolume(DWORD processId)
 {
-	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<ISimpleAudioVolume> pAudioVolume;
 		HRESULT hr = session->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pAudioVolume);
 		if (FAILED(hr)) return false;
@@ -273,7 +280,7 @@ int xiaochufuji::VolumeController::getSessionVolume(DWORD processId)
 
 BOOL xiaochufuji::VolumeController::getSessionMute(DWORD processId)
 {
-	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<ISimpleAudioVolume> pAudioVolume;
 		HRESULT hr = session->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pAudioVolume);
 		if (FAILED(hr)) return false;
@@ -293,9 +300,9 @@ BOOL xiaochufuji::VolumeController::getSessionMute(DWORD processId)
 	return  -1;
 }
 
-bool xiaochufuji::VolumeController::setSessionVolume(DWORD processId, UINT32 volumeLevel)
+bool xiaochufuji::VolumeController::setSessionVolume(DWORD processId, UINT32 volumeLevel, bool cancelMute)
 {
-	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<ISimpleAudioVolume> pAudioVolume;
 		HRESULT hr = session->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pAudioVolume);
 		if (FAILED(hr)) return false;
@@ -304,8 +311,12 @@ bool xiaochufuji::VolumeController::setSessionVolume(DWORD processId, UINT32 vol
 		float setValue = static_cast<float>(info.set) / 100;
 		if (setValue < 0.0f + epsilon) setValue = 0.0f;
 		if (setValue > 1.0f - epsilon) setValue = 1.0f;
-		hr = pAudioVolume->SetMasterVolume(setValue, NULL);
-		if (SUCCEEDED(hr)) return true;
+		if (cancelMute) hr = pAudioVolume->SetMute(FALSE, NULL);
+		if (SUCCEEDED(hr))
+		{
+			hr = pAudioVolume->SetMasterVolume(setValue, NULL);
+			if (SUCCEEDED(hr)) return true;
+		}
 		return false;
 		};
 	VolumeStucture vs{};
@@ -313,9 +324,9 @@ bool xiaochufuji::VolumeController::setSessionVolume(DWORD processId, UINT32 vol
 	return findSession(processId, callback, vs);
 }
 
-bool xiaochufuji::VolumeController::adjustSessionVolume(DWORD processId, UINT32 volumeLevel)
+bool xiaochufuji::VolumeController::adjustSessionVolume(DWORD processId, UINT32 volumeLevel, bool cancelMute)
 {
-	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<ISimpleAudioVolume> pAudioVolume;
 		HRESULT hr = session->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pAudioVolume);
 		if (FAILED(hr)) return false;
@@ -330,9 +341,12 @@ bool xiaochufuji::VolumeController::adjustSessionVolume(DWORD processId, UINT32 
 			float newValue = kahanAdd(static_cast<float>(info.adjust) / 100, currentValue);
 			if (newValue < 0.0f + epsilon) newValue = 0.0f;
 			if (newValue > 1.0f - epsilon) newValue = 1.0f;
-
-			hr = pAudioVolume->SetMasterVolume(newValue, NULL);
-			if (SUCCEEDED(hr)) return true;
+			if (cancelMute) hr = pAudioVolume->SetMute(FALSE, NULL);
+			if (SUCCEEDED(hr))
+			{
+				hr = pAudioVolume->SetMasterVolume(newValue, NULL);
+				if (SUCCEEDED(hr)) return true;
+			}
 			return false;
 		} while (0);
 		return false;
@@ -344,7 +358,7 @@ bool xiaochufuji::VolumeController::adjustSessionVolume(DWORD processId, UINT32 
 
 bool xiaochufuji::VolumeController::muteSessionVolume(DWORD processId, bool isMute)
 {
-	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<ISimpleAudioVolume> pAudioVolume;
 		HRESULT hr = session->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pAudioVolume);
 		if (FAILED(hr)) return false;
@@ -360,7 +374,7 @@ bool xiaochufuji::VolumeController::muteSessionVolume(DWORD processId, bool isMu
 
 bool xiaochufuji::VolumeController::triggerMuteSessionVolume(DWORD processId)
 {
-	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info) ->bool {
+	auto callback = [](const CComPtr<ISimpleAudioVolume>& session, VolumeStucture& info, bool cancelMute) ->bool {
 		CComPtr<ISimpleAudioVolume> pAudioVolume;
 		HRESULT hr = session->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pAudioVolume);
 		if (FAILED(hr)) return false;
@@ -433,7 +447,7 @@ void xiaochufuji::VolumeController::enumerateAudioSession()
 	}
 }
 
-bool xiaochufuji::VolumeController::findDevice(const std::string& findDeviceName, DeviceCallbackType callback, VolumeStucture& info)
+bool xiaochufuji::VolumeController::findDevice(const std::string& findDeviceName, DeviceCallbackType callback, VolumeStucture& info, bool cancelMute)
 {
 	CComPtr<IMMDeviceEnumerator> deviceEnumerator;
 	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&deviceEnumerator));
@@ -462,7 +476,7 @@ bool xiaochufuji::VolumeController::findDevice(const std::string& findDeviceName
 					deviceName = varName.pwszVal;
 					PropVariantClear(&varName);
 					if (findDeviceName == WStringToString(deviceName))
-						return callback(device, info);
+						return callback(device, info, cancelMute);
 				}
 			}
 		}
@@ -470,7 +484,7 @@ bool xiaochufuji::VolumeController::findDevice(const std::string& findDeviceName
 	return false;
 }
 
-bool xiaochufuji::VolumeController::findSession(DWORD processId, SessionCallbackType callback, VolumeStucture& info)
+bool xiaochufuji::VolumeController::findSession(DWORD processId, SessionCallbackType callback, VolumeStucture& info, bool cancelMute)
 {
 	CComPtr<IMMDeviceEnumerator> enumerator;
 	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
@@ -519,7 +533,7 @@ bool xiaochufuji::VolumeController::findSession(DWORD processId, SessionCallback
 				CComPtr<ISimpleAudioVolume> audioVolume;
 				hr = sessionControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&audioVolume);
 				if (FAILED(hr)) continue;
-				if(callback(audioVolume, info)) globalFlag = true;	// one modify success is global success
+				if(callback(audioVolume, info, cancelMute)) globalFlag = true;	// one modify success is global success
 			}
 		}
 	}

@@ -7,22 +7,25 @@ int main()
 	auto x = vc.getAllAudioSessions();
 	for (auto ite : x)
 	{
-		std::cout << ite << std::endl;
+		std::cout << "process id: " << ite << std::endl;
 	}
 	auto a = vc.getAllAudioDevices();
 	for (auto ite : a)
 	{
 		std::cout << ite << std::endl;
 	}
-	int processId = 3292;	// your audio process id
+	int processId = 19208;	// your audio process id
+	if (a.size() < 1) return 0;
+	std::cout << a[0] << std::endl;
+	xiaochufuji::VolumeController::setDeviceVolume(a[0], 7);
+	xiaochufuji::VolumeController::muteDeviceVolume(a[0]);
+	xiaochufuji::VolumeController::triggerMuteDeviceVolume(a[0]);
+	xiaochufuji::VolumeController::adjustDeviceVolume(a[0], -1);
 
-	vc.setDeviceVolume(a[0], 60);
-	vc.triggerMuteDeviceVolume(a[0]);
-	vc.adjustDeviceVolume(a[0], -10);
-
-	vc.setSessionVolume(processId, 10);
-	vc.triggerMuteSessionVolume(processId);
-	vc.adjustSessionVolume(processId, 50);
+	xiaochufuji::VolumeController::setSessionVolume(processId, 10);
+	xiaochufuji::VolumeController::muteSessionVolume(processId);
+	xiaochufuji::VolumeController::triggerMuteSessionVolume(processId);
+	xiaochufuji::VolumeController::adjustSessionVolume(processId, 50);
 
 	while (true) {
 		char ch = _getch(); 
@@ -44,11 +47,10 @@ int main()
 				std::cout << " other key pressed: " << (int)ch << std::endl;
 				break;
 			}
-			std::cout << "key pressed: " << (int)ch << std::endl;
+			std::cout << "current volume: " <<  xiaochufuji::VolumeController::getSessionVolume(processId) << std::endl;
 		}
 		else {
 			std::cout << "Non-arrow key pressed: " << (int)ch << std::endl;
 		}
-
 	}
 }

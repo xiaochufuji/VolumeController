@@ -18,8 +18,8 @@ namespace xiaochufuji
 	};
 	class VolumeController
 	{
-		using DeviceCallbackType = bool(*)(const CComPtr<IMMDevice>& device, VolumeStucture& info);
-		using SessionCallbackType = bool(*)(const CComPtr<ISimpleAudioVolume> &session, VolumeStucture& info);
+		using DeviceCallbackType = bool(*)(const CComPtr<IMMDevice>& device, VolumeStucture& info, bool cancelMute);
+		using SessionCallbackType = bool(*)(const CComPtr<ISimpleAudioVolume> &session, VolumeStucture& info, bool cancelMute);
 	public:
 		explicit VolumeController();
 		~VolumeController();
@@ -28,16 +28,16 @@ namespace xiaochufuji
 		std::vector<std::string> getAllAudioDevices();
 		static int getDeviceVolume(const std::string& deviceName);
 		static BOOL getDeviceMute(const std::string& deviceName);
-		static bool setDeviceVolume(const std::string& deviceName, UINT32 volumeLevel);
-		static bool adjustDeviceVolume(const std::string& deviceName, UINT32 volumeLevel);
+		static bool setDeviceVolume(const std::string& deviceName, UINT32 volumeLevel, bool cancelMute = true);
+		static bool adjustDeviceVolume(const std::string& deviceName, UINT32 volumeLevel, bool cancelMute = true);
 		static bool muteDeviceVolume(const std::string& deviceName, bool isMute = true);
 		static bool triggerMuteDeviceVolume(const std::string& deviceName);
 		// session control
 		std::vector<DWORD> getAllAudioSessions();
 		static int getSessionVolume(DWORD processId);
 		static BOOL getSessionMute(DWORD processId);
-		static bool setSessionVolume(DWORD processId, UINT32 volumeLevel);
-		static bool adjustSessionVolume(DWORD processId, UINT32 volumeLevel);
+		static bool setSessionVolume(DWORD processId, UINT32 volumeLevel, bool cancelMute = true);
+		static bool adjustSessionVolume(DWORD processId, UINT32 volumeLevel, bool cancelMute = true);
 		static bool muteSessionVolume(DWORD processId, bool isMute = true);
 		static bool triggerMuteSessionVolume(DWORD processId);
 	private:
@@ -45,8 +45,8 @@ namespace xiaochufuji
 		void clearDevice();
 		void clearSession();
 		void enumerateAudioSession();
-		static bool findDevice(const std::string& findDeviceName, DeviceCallbackType callback, VolumeStucture& info);
-		static bool findSession(DWORD processId, SessionCallbackType callback, VolumeStucture& info);
+		static bool findDevice(const std::string& findDeviceName, DeviceCallbackType callback, VolumeStucture& info, bool cancelMute = true);
+		static bool findSession(DWORD processId, SessionCallbackType callback, VolumeStucture& info, bool cancelMute = true);
 
 	private:
 		// device
