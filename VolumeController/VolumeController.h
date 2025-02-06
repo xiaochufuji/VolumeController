@@ -40,6 +40,8 @@ namespace xiaochufuji
 		static bool adjustSessionVolume(DWORD processId, UINT32 volumeLevel, bool cancelMute = true);
 		static bool muteSessionVolume(DWORD processId, bool isMute = true);
 		static bool triggerMuteSessionVolume(DWORD processId);
+		// device switch
+		static bool switchDevice(const std::string& deviceName);
 	private:
 		std::vector<DWORD> set2Vector();
 		void clearDevice();
@@ -47,7 +49,7 @@ namespace xiaochufuji
 		void enumerateAudioSession();
 		static bool findDevice(const std::string& findDeviceName, DeviceCallbackType callback, VolumeStucture& info, bool cancelMute = true);
 		static bool findSession(DWORD processId, SessionCallbackType callback, VolumeStucture& info, bool cancelMute = true);
-
+		static bool setDefaultAudioPlaybackDevice(LPCWSTR deviceId);
 	private:
 		// device
 		std::vector<std::string> m_audioDevices;

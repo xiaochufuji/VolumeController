@@ -139,6 +139,7 @@
     <ClCompile Include="VolumeController.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="PolicyConfig.h" />
     <ClInclude Include="StringAdapter.h" />
     <ClInclude Include="VolumeController.h" />
   </ItemGroup>

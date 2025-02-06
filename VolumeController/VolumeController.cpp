@@ -3,7 +3,7 @@
 #include <endpointvolume.h>
 #include <functiondiscoverykeys_devpkey.h> 
 #include <cmath>
-
+#include "PolicyConfig.h"
 // Kahan 
 static float kahanAdd(float a, float b) {
 	static float c = 0.0f;
@@ -394,6 +394,44 @@ bool xiaochufuji::VolumeController::triggerMuteSessionVolume(DWORD processId)
 	return findSession(processId, callback, vs);
 }
 
+bool xiaochufuji::VolumeController::switchDevice(const std::string& deviceName)
+{
+	CComPtr<IMMDeviceEnumerator> deviceEnumerator = nullptr;
+	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&deviceEnumerator);
+	if (FAILED(hr)) return false;
+
+	CComPtr<IMMDeviceCollection> deviceCollection = nullptr;
+	hr = deviceEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &deviceCollection);
+	if (FAILED(hr)) return false;
+
+	UINT count;
+	deviceCollection->GetCount(&count);
+
+	for (UINT i = 0; i < count; i++) {
+		CComPtr<IMMDevice> device = nullptr;
+		hr = deviceCollection->Item(i, &device);
+		if (FAILED(hr)) continue;
+
+		LPWSTR deviceId = nullptr;
+		device->GetId(&deviceId);
+		CComPtr<IPropertyStore> propertyStore;
+		device->OpenPropertyStore(STGM_READ, &propertyStore);
+
+		PROPVARIANT nameProp;
+		PropVariantInit(&nameProp);
+		hr = propertyStore->GetValue(PKEY_Device_FriendlyName, &nameProp);
+
+		if (SUCCEEDED(hr)) {
+			if (WStringToString(nameProp.pwszVal) == deviceName)
+			{
+				setDefaultAudioPlaybackDevice(deviceId);
+			}
+		}
+		PropVariantClear(&nameProp);
+		CoTaskMemFree(deviceId);
+	}
+}
+
 std::vector<DWORD> xiaochufuji::VolumeController::set2Vector()
 {
 	std::vector<DWORD> retVal;
@@ -472,7 +510,8 @@ bool xiaochufuji::VolumeController::findDevice(const std::string& findDeviceName
 			if (SUCCEEDED(hr)) {
 				PROPVARIANT varName;
 				PropVariantInit(&varName);
-				if (SUCCEEDED(propertyStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+				if (SUCCEEDED(propertyStore->GetValue(PKEY_Device_FriendlyName, &varName))) 
+				{
 					deviceName = varName.pwszVal;
 					PropVariantClear(&varName);
 					if (findDeviceName == WStringToString(deviceName))
@@ -538,4 +577,18 @@ bool xiaochufuji::VolumeController::findSession(DWORD processId, SessionCallback
 		}
 	}
 	return globalFlag;
+}
+
+bool xiaochufuji::VolumeController::setDefaultAudioPlaybackDevice(LPCWSTR deviceId)
+{
+	CComPtr<IPolicyConfigVista> pPolicyConfig;
+	ERole reserved = eConsole;
+
+	HRESULT hr = CoCreateInstance(__uuidof(CPolicyConfigVistaClient),
+		NULL, CLSCTX_ALL, __uuidof(IPolicyConfigVista), (LPVOID*)&pPolicyConfig);
+	if (SUCCEEDED(hr))
+	{
+		hr = pPolicyConfig->SetDefaultEndpoint(deviceId, reserved);
+	}
+	return hr;
 }
